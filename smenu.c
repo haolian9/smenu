@@ -6749,6 +6749,22 @@ set_pattern_action(char  *ctx_name,
 }
 
 void
+set_output_file_action(char  *ctx_name,
+                   char  *opt_name,
+                   char  *param,
+                   int    nb_values,
+                   char **values,
+                   int    nb_opt_data,
+                   void **opt_data,
+                   int    nb_ctx_data,
+                   void **ctx_data)
+{
+  char  **output_file = opt_data[0];
+
+  *output_file = xstrdup(values[0]);
+}
+
+void
 int_action(char  *ctx_name,
            char  *opt_name,
            char  *param,
@@ -8675,6 +8691,9 @@ main(int argc, char *argv[])
 
   FILE *input_file; /* The name of the file passed as argument if any.       */
 
+  char *output_fname = NULL;
+  FILE *output_file = NULL;
+
   long index; /* generic counter.                                            */
 
   long daccess_index = 1; /* First index of the numbered words.              */
@@ -9145,6 +9164,7 @@ main(int argc, char *argv[])
                    "[post_subst_excluded... #/regex/repl/opts] "
                    "[search_method #prefix|substring|fuzzy] "
                    "[start_pattern #pattern] "
+                   "[output_file #output_file] "
                    "[timeout #...] "
                    "[hidden_timeout #...] "
                    "[validate_in_search_mode] "
@@ -9326,6 +9346,9 @@ main(int argc, char *argv[])
   ctxopt_add_opt_settings(parameters,
                           "start_pattern",
                           "-s -sp -start -start_pattern");
+  ctxopt_add_opt_settings(parameters,
+                          "output_file",
+                          "-o -of -output_file");
   ctxopt_add_opt_settings(parameters, "timeout", "-x -tmout -timeout");
   ctxopt_add_opt_settings(parameters,
                           "hidden_timeout",
@@ -9496,6 +9519,11 @@ main(int argc, char *argv[])
                           set_pattern_action,
                           &pre_selection_index,
                           &misc,
+                          (char *)0);
+  ctxopt_add_opt_settings(actions,
+                          "output_file",
+                          set_output_file_action,
+                          &output_fname,
                           (char *)0);
   ctxopt_add_opt_settings(actions,
                           "title",
@@ -9832,6 +9860,19 @@ main(int argc, char *argv[])
 
     ctxopt_ctx_disp_usage(NULL, exit_after);
     exit(EXIT_FAILURE); /* Avoid a compiler warning. */
+  }
+
+  if (output_fname != NULL) {
+    output_file = fopen_safe(output_fname, "w");
+    if (output_file == NULL)
+    {
+      fprintf(stderr, "cant open %s\n", output_fname);
+      exit(EXIT_FAILURE);
+    }
+  }
+  else
+  {
+    output_file = old_stdout;
   }
 
   /* Free the memory used internally by ctxopt. */
@@ -14058,7 +14099,7 @@ main(int argc, char *argv[])
           /* """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""" */
           if (timeout.initial_value > 0 && timeout.remain == 0
               && timeout.mode == WORD)
-            fprintf(old_stdout, "%s", timeout_word);
+            fprintf(output_file, "%s", timeout_word);
           else
           {
             char *num_str;
@@ -14153,7 +14194,7 @@ main(int argc, char *argv[])
               {
                 str = ((output_t *)(node->data))->output_str;
 
-                fprintf(old_stdout, "%s", str);
+                fprintf(output_file, "%s", str);
                 width += my_wcswidth((w = utf8_strtowcs(str)), 65535);
                 free(w);
                 free(str);
@@ -14161,13 +14202,13 @@ main(int argc, char *argv[])
 
                 if (win.sel_sep != NULL)
                 {
-                  fprintf(old_stdout, "%s", win.sel_sep);
+                  fprintf(output_file, "%s", win.sel_sep);
                   width += my_wcswidth((w = utf8_strtowcs(win.sel_sep)), 65535);
                   free(w);
                 }
                 else
                 {
-                  fprintf(old_stdout, " ");
+                  fprintf(output_file, " ");
                   width++;
                 }
 
@@ -14175,7 +14216,7 @@ main(int argc, char *argv[])
               }
 
               str = ((output_t *)(node->data))->output_str;
-              fprintf(old_stdout, "%s", str);
+              fprintf(output_file, "%s", str);
               width += my_wcswidth((w = utf8_strtowcs(str)), 65535);
               free(w);
               free(str);
@@ -14222,7 +14263,7 @@ main(int argc, char *argv[])
 
               /* And print it. */
               /* """"""""""""" */
-              fprintf(old_stdout, "%s", output_str);
+              fprintf(output_file, "%s", output_str);
             }
 
             /* If the output stream is a terminal. */
